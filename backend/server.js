@@ -26,11 +26,52 @@ dotenv.config();
 const app = express();
 const uploadsDir = path.join(__dirname, "uploads");
 
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const isOriginAllowed = (origin = "") => {
+  if (!origin) {
+    return true;
+  }
+
+  if (process.env.NODE_ENV !== "production" || !allowedOrigins.length) {
+    return true;
+  }
+
+  return allowedOrigins.some((allowedOrigin) => {
+    if (allowedOrigin === origin) {
+      return true;
+    }
+
+    if (allowedOrigin.includes("*")) {
+      const expression = new RegExp(
+        `^${allowedOrigin
+          .split("*")
+          .map((segment) => segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+          .join(".*")}$`
+      );
+
+      return expression.test(origin);
+    }
+
+    return false;
+  });
+};
+
 fs.mkdirSync(uploadsDir, { recursive: true });
 
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origin not allowed by CORS"));
+    },
     credentials: true,
   })
 );
