@@ -80,6 +80,17 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 app.use("/uploads", express.static(uploadsDir));
 
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    data: {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+    },
+    message: "API is healthy",
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/visa", visaRoutes);
