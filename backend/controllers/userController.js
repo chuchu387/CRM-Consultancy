@@ -1,37 +1,5 @@
-const fs = require("fs");
-const path = require("path");
-
 const User = require("../models/User");
-
-const uploadsDir = path.join(__dirname, "../uploads");
-
-const removeUploadedFile = (fileUrl = "") => {
-  if (!fileUrl) {
-    return;
-  }
-
-  try {
-    const url = new URL(fileUrl);
-    const filename = path.basename(url.pathname || "");
-
-    if (!filename) {
-      return;
-    }
-
-    const targetPath = path.join(uploadsDir, filename);
-
-    if (fs.existsSync(targetPath)) {
-      fs.unlinkSync(targetPath);
-    }
-  } catch (error) {
-    const filename = path.basename(fileUrl);
-    const targetPath = path.join(uploadsDir, filename);
-
-    if (filename && fs.existsSync(targetPath)) {
-      fs.unlinkSync(targetPath);
-    }
-  }
-};
+const { removeStoredAsset, uploadBuffer } = require("../utils/storage");
 
 const getAllStudents = async (req, res, next) => {
   try {
@@ -93,11 +61,23 @@ const updateMyProfile = async (req, res, next) => {
     user.address = nextAddress;
 
     if (req.file) {
-      if (user.avatarUrl) {
-        removeUploadedFile(user.avatarUrl);
-      }
+      await removeStoredAsset({
+        publicId: user.avatarPublicId,
+        resourceType: user.avatarResourceType || "image",
+        fileUrl: user.avatarUrl,
+      });
 
-      user.avatarUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+      const uploadedAvatar = await uploadBuffer({
+        buffer: req.file.buffer,
+        fileName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        folder: "crm-consultancy/avatars",
+        fallbackName: user.name || "avatar",
+      });
+
+      user.avatarUrl = uploadedAvatar.url;
+      user.avatarPublicId = uploadedAvatar.publicId;
+      user.avatarResourceType = uploadedAvatar.resourceType;
     }
 
     await user.save();

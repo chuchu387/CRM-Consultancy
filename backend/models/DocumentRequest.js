@@ -46,6 +46,14 @@ const documentRequestSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  filePublicId: {
+    type: String,
+    default: "",
+  },
+  fileResourceType: {
+    type: String,
+    default: "",
+  },
   fileName: {
     type: String,
     default: "",
@@ -76,6 +84,14 @@ const documentRequestSchema = new mongoose.Schema({
   uploadHistory: [
     {
       fileUrl: {
+        type: String,
+        default: "",
+      },
+      filePublicId: {
+        type: String,
+        default: "",
+      },
+      fileResourceType: {
         type: String,
         default: "",
       },

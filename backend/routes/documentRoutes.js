@@ -1,7 +1,5 @@
 const express = require("express");
-const fs = require("fs");
 const multer = require("multer");
-const path = require("path");
 
 const {
   acceptDocumentRequest,
@@ -16,29 +14,6 @@ const { protect } = require("../middleware/auth");
 const { isConsultancy, isStudent } = require("../middleware/role");
 
 const router = express.Router();
-const uploadDir = path.join(__dirname, "../uploads");
-
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const sanitizeFilename = (filename) => {
-  const extension = path.extname(filename).toLowerCase();
-  const baseName = path
-    .basename(filename, extension)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return `${baseName || "file"}${extension}`;
-};
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${sanitizeFilename(file.originalname)}`);
-  },
-});
 
 const allowedMimeTypes = new Set([
   "application/pdf",
@@ -58,7 +33,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024,

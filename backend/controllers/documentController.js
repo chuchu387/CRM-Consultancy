@@ -3,6 +3,7 @@ const User = require("../models/User");
 const VisaApplication = require("../models/VisaApplication");
 const { logStudentActivity } = require("../utils/activity");
 const { createNotification } = require("../utils/notification");
+const { uploadBuffer } = require("../utils/storage");
 
 const populateDocumentQuery = (query) =>
   query
@@ -302,6 +303,8 @@ const uploadDocument = async (req, res, next) => {
       if (!latestExistingUpload || latestExistingUpload.fileUrl !== documentRequest.fileUrl) {
         documentRequest.uploadHistory.push({
           fileUrl: documentRequest.fileUrl,
+          filePublicId: documentRequest.filePublicId || "",
+          fileResourceType: documentRequest.fileResourceType || "",
           fileName: documentRequest.fileName,
           fileMimeType: documentRequest.fileMimeType,
           uploadedAt: documentRequest.uploadedAt || new Date(),
@@ -314,7 +317,17 @@ const uploadDocument = async (req, res, next) => {
       }
     }
 
-    documentRequest.fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    const uploadedAsset = await uploadBuffer({
+      buffer: req.file.buffer,
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      folder: `crm-consultancy/documents/${documentRequest.studentId?._id || req.user.id}`,
+      fallbackName: documentRequest.documentName || "document",
+    });
+
+    documentRequest.fileUrl = uploadedAsset.url;
+    documentRequest.filePublicId = uploadedAsset.publicId;
+    documentRequest.fileResourceType = uploadedAsset.resourceType;
     documentRequest.fileName = req.file.originalname;
     documentRequest.fileMimeType = req.file.mimetype;
     documentRequest.status = "uploaded";
@@ -325,6 +338,8 @@ const uploadDocument = async (req, res, next) => {
     documentRequest.reviewedByName = "";
     documentRequest.uploadHistory.push({
       fileUrl: documentRequest.fileUrl,
+      filePublicId: documentRequest.filePublicId,
+      fileResourceType: documentRequest.fileResourceType,
       fileName: documentRequest.fileName,
       fileMimeType: documentRequest.fileMimeType,
       uploadedAt: documentRequest.uploadedAt,
@@ -427,6 +442,8 @@ const updateDocStatus = async (req, res, next) => {
     if (!documentRequest.uploadHistory.length && documentRequest.fileUrl) {
       documentRequest.uploadHistory.push({
         fileUrl: documentRequest.fileUrl,
+        filePublicId: documentRequest.filePublicId || "",
+        fileResourceType: documentRequest.fileResourceType || "",
         fileName: documentRequest.fileName,
         fileMimeType: documentRequest.fileMimeType,
         uploadedAt: documentRequest.uploadedAt || new Date(),
