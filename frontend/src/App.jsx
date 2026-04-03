@@ -3,9 +3,11 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom
 import { ToastContainer } from "react-toastify";
 
 import Navbar from "./components/Navbar";
+import MobileAppPrompt from "./components/MobileAppPrompt";
 import PrivateRoute from "./components/PrivateRoute";
 import Sidebar from "./components/Sidebar";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
@@ -63,6 +65,7 @@ const DashboardLayout = ({ role }) => {
         <main className="px-4 py-6 sm:px-6">
           <Outlet />
         </main>
+        <MobileAppPrompt />
       </div>
     </div>
   );
@@ -124,18 +127,20 @@ const AppRoutes = () => (
 
 const App = () => (
   <AuthProvider>
-    <BrowserRouter>
-      <AppRoutes />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme="light"
-      />
-    </BrowserRouter>
+    <NotificationProvider>
+      <BrowserRouter>
+        <AppRoutes />
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          theme="light"
+        />
+      </BrowserRouter>
+    </NotificationProvider>
   </AuthProvider>
 );
 

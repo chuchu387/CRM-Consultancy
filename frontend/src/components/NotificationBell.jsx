@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { HiOutlineBellAlert } from "react-icons/hi2";
 import { HiOutlineBell } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 
@@ -8,7 +9,15 @@ import { formatDateTime } from "../utils/date";
 const NotificationBell = ({ role }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    markAllAsRead,
+    markAsRead,
+    notificationPermission,
+    canUseBrowserNotifications,
+    requestNotificationPermission,
+  } = useNotifications();
 
   const recentNotifications = useMemo(() => notifications.slice(0, 6), [notifications]);
 
@@ -53,6 +62,23 @@ const NotificationBell = ({ role }) => {
           </div>
 
           <div className="mt-4 space-y-3">
+            {canUseBrowserNotifications && notificationPermission !== "granted" ? (
+              <button
+                type="button"
+                onClick={requestNotificationPermission}
+                className="flex w-full items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-amber-800 transition hover:bg-amber-100"
+              >
+                <span className="rounded-xl bg-white/70 p-2 text-amber-600">
+                  <HiOutlineBellAlert className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-semibold">
+                  {notificationPermission === "denied"
+                    ? "Popup alerts are blocked. Tap to retry after enabling browser notifications."
+                    : "Enable popup alerts for new updates"}
+                </span>
+              </button>
+            ) : null}
+
             {recentNotifications.length ? (
               recentNotifications.map((notification) => (
                 <button
@@ -90,7 +116,9 @@ const NotificationBell = ({ role }) => {
             type="button"
             onClick={() => {
               setIsOpen(false);
-              navigate(role === "consultancy" ? "/consultancy/notifications" : "/student/notifications");
+              navigate(
+                role === "consultancy" ? "/consultancy/notifications" : "/student/notifications"
+              );
             }}
             className="mt-4 w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
           >

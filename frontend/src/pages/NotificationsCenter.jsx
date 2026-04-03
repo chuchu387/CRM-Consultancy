@@ -9,7 +9,16 @@ import { formatDateTime } from "../utils/date";
 const NotificationsCenter = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { notifications, loading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const {
+    notifications,
+    loading,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    notificationPermission,
+    canUseBrowserNotifications,
+    requestNotificationPermission,
+  } = useNotifications();
   const [filter, setFilter] = useState("all");
 
   const filteredNotifications = useMemo(() => {
@@ -56,6 +65,21 @@ const NotificationsCenter = () => {
             >
               Mark All Read
             </button>
+            {canUseBrowserNotifications ? (
+              <button
+                type="button"
+                onClick={requestNotificationPermission}
+                className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+                  notificationPermission === "granted"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                }`}
+              >
+                {notificationPermission === "granted"
+                  ? "Popup Alerts Enabled"
+                  : "Enable Popup Alerts"}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
