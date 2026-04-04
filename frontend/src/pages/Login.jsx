@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -10,6 +11,7 @@ const Login = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isValid = useMemo(
     () => form.email.trim().length > 0 && form.password.trim().length > 0,
@@ -100,15 +102,29 @@ const Login = () => {
               >
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={form.password}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, password: event.target.value }))
-                }
-                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, password: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 pr-12 text-gray-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 transition hover:text-blue-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <HiOutlineEyeSlash className="h-5 w-5" />
+                  ) : (
+                    <HiOutlineEye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
               {errors.password ? (
                 <p className="mt-2 text-sm text-rose-600">{errors.password}</p>
               ) : null}

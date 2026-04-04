@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { HiOutlineCamera, HiOutlineKey, HiOutlineUserCircle } from "react-icons/hi2";
+import {
+  HiOutlineCamera,
+  HiOutlineEye,
+  HiOutlineEyeSlash,
+  HiOutlineKey,
+  HiOutlineUserCircle,
+} from "react-icons/hi2";
 import { toast } from "react-toastify";
 
 import api from "../api/axios";
@@ -25,6 +31,11 @@ const Profile = () => {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  });
 
   useEffect(() => {
     setProfileForm({
@@ -67,6 +78,13 @@ const Profile = () => {
   const handlePasswordFieldChange = (field, value) => {
     setPasswordForm((current) => ({ ...current, [field]: value }));
     setPasswordErrors((current) => ({ ...current, [field]: "" }));
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setPasswordVisibility((current) => ({
+      ...current,
+      [field]: !current[field],
+    }));
   };
 
   const handleAvatarChange = (event) => {
@@ -321,14 +339,32 @@ const Profile = () => {
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Current Password
                 </label>
-                <input
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(event) =>
-                    handlePasswordFieldChange("currentPassword", event.target.value)
-                  }
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
-                />
+                <div className="relative">
+                  <input
+                    type={passwordVisibility.currentPassword ? "text" : "password"}
+                    value={passwordForm.currentPassword}
+                    onChange={(event) =>
+                      handlePasswordFieldChange("currentPassword", event.target.value)
+                    }
+                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 pr-12 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("currentPassword")}
+                    className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 transition hover:text-emerald-600"
+                    aria-label={
+                      passwordVisibility.currentPassword
+                        ? "Hide current password"
+                        : "Show current password"
+                    }
+                  >
+                    {passwordVisibility.currentPassword ? (
+                      <HiOutlineEyeSlash className="h-5 w-5" />
+                    ) : (
+                      <HiOutlineEye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
                 {passwordErrors.currentPassword ? (
                   <p className="mt-2 text-sm text-rose-600">{passwordErrors.currentPassword}</p>
                 ) : null}
@@ -338,12 +374,32 @@ const Profile = () => {
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   New Password
                 </label>
-                <input
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(event) => handlePasswordFieldChange("newPassword", event.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
-                />
+                <div className="relative">
+                  <input
+                    type={passwordVisibility.newPassword ? "text" : "password"}
+                    value={passwordForm.newPassword}
+                    onChange={(event) =>
+                      handlePasswordFieldChange("newPassword", event.target.value)
+                    }
+                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 pr-12 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("newPassword")}
+                    className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 transition hover:text-emerald-600"
+                    aria-label={
+                      passwordVisibility.newPassword
+                        ? "Hide new password"
+                        : "Show new password"
+                    }
+                  >
+                    {passwordVisibility.newPassword ? (
+                      <HiOutlineEyeSlash className="h-5 w-5" />
+                    ) : (
+                      <HiOutlineEye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
                 {passwordErrors.newPassword ? (
                   <p className="mt-2 text-sm text-rose-600">{passwordErrors.newPassword}</p>
                 ) : null}
@@ -353,14 +409,32 @@ const Profile = () => {
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Confirm New Password
                 </label>
-                <input
-                  type="password"
-                  value={passwordForm.confirmPassword}
-                  onChange={(event) =>
-                    handlePasswordFieldChange("confirmPassword", event.target.value)
-                  }
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
-                />
+                <div className="relative">
+                  <input
+                    type={passwordVisibility.confirmPassword ? "text" : "password"}
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) =>
+                      handlePasswordFieldChange("confirmPassword", event.target.value)
+                    }
+                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 pr-12 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("confirmPassword")}
+                    className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 transition hover:text-emerald-600"
+                    aria-label={
+                      passwordVisibility.confirmPassword
+                        ? "Hide confirm password"
+                        : "Show confirm password"
+                    }
+                  >
+                    {passwordVisibility.confirmPassword ? (
+                      <HiOutlineEyeSlash className="h-5 w-5" />
+                    ) : (
+                      <HiOutlineEye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
                 {passwordErrors.confirmPassword ? (
                   <p className="mt-2 text-sm text-rose-600">{passwordErrors.confirmPassword}</p>
                 ) : null}

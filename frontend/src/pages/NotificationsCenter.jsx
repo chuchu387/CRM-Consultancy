@@ -44,13 +44,13 @@ const NotificationsCenter = () => {
             <p className="mt-2 text-sm text-gray-500">{unreadCount} unread notification(s)</p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
             {["all", "unread"].map((option) => (
               <button
                 key={option}
                 type="button"
                 onClick={() => setFilter(option)}
-                className={`rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+                className={`w-full rounded-2xl px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
                   filter === option
                     ? "bg-blue-600 text-white"
                     : "bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-700"
@@ -62,7 +62,7 @@ const NotificationsCenter = () => {
             <button
               type="button"
               onClick={markAllAsRead}
-              className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              className="w-full rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 sm:w-auto"
             >
               Mark All Read
             </button>
@@ -70,7 +70,7 @@ const NotificationsCenter = () => {
               <button
                 type="button"
                 onClick={requestNotificationPermission}
-                className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+                className={`w-full rounded-2xl border px-4 py-2.5 text-sm font-semibold transition sm:w-auto ${
                   pushEnabled
                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                     : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
@@ -99,13 +99,13 @@ const NotificationsCenter = () => {
           filteredNotifications.map((notification) => (
             <div
               key={notification._id}
-              className={`rounded-[1.75rem] border p-5 shadow-sm transition ${
+              className={`overflow-hidden rounded-[1.75rem] border p-5 shadow-sm transition ${
                 notification.isRead ? "border-gray-200 bg-white" : "border-blue-100 bg-blue-50/50"
               }`}
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <h3 className="font-heading text-xl font-semibold text-gray-900">
                       {notification.title}
                     </h3>
@@ -115,18 +115,20 @@ const NotificationsCenter = () => {
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-sm leading-7 text-gray-600">{notification.message}</p>
+                  <p className="mt-2 break-words text-sm leading-7 text-gray-600">
+                    {notification.message}
+                  </p>
                   <p className="mt-3 text-xs uppercase tracking-[0.16em] text-gray-400">
                     {formatDateTime(notification.createdAt)}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                   {!notification.isRead ? (
                     <button
                       type="button"
                       onClick={() => markAsRead(notification._id)}
-                      className="rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                      className="w-full rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 sm:w-auto"
                     >
                       Mark Read
                     </button>
@@ -141,7 +143,7 @@ const NotificationsCenter = () => {
                             : "/student/dashboard")
                       )
                     }
-                    className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    className="w-full rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 sm:w-auto"
                   >
                     Open
                   </button>
