@@ -241,7 +241,7 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [showToastNotification, token, user?.id, user?.role]);
 
-  const syncPushSubscription = useCallback(async () => {
+  const syncPushSubscription = useCallback(async ({ silent = false } = {}) => {
     if (!user?.id || !token || Notification.permission !== "granted") {
       setPushEnabled(false);
       return false;
@@ -253,11 +253,15 @@ export const NotificationProvider = ({ children }) => {
       return Boolean(result?.subscribed);
     } catch (subscriptionError) {
       setPushEnabled(false);
-      toast.error(
-        subscriptionError.response?.data?.message ||
-          subscriptionError.message ||
-          "Unable to enable popup alerts right now."
-      );
+
+      if (!silent) {
+        toast.error(
+          subscriptionError.response?.data?.message ||
+            subscriptionError.message ||
+            "Unable to enable popup alerts right now."
+        );
+      }
+
       return false;
     }
   }, [token, user?.id]);
@@ -268,7 +272,7 @@ export const NotificationProvider = ({ children }) => {
     }
 
     if (notificationPermission === "granted") {
-      syncPushSubscription().catch(() => undefined);
+      syncPushSubscription({ silent: true }).catch(() => undefined);
       return;
     }
 
@@ -306,7 +310,7 @@ export const NotificationProvider = ({ children }) => {
       setNotificationPermission(permission);
 
       if (permission === "granted") {
-        const subscribed = await syncPushSubscription();
+        const subscribed = await syncPushSubscription({ silent: false });
         if (subscribed) {
           toast.success("Popup alerts are enabled.");
         }
