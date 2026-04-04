@@ -16,6 +16,7 @@ const NotificationsCenter = () => {
     markAsRead,
     markAllAsRead,
     notificationPermission,
+    pushEnabled,
     canUseBrowserNotifications,
     requestNotificationPermission,
   } = useNotifications();
@@ -70,14 +71,16 @@ const NotificationsCenter = () => {
                 type="button"
                 onClick={requestNotificationPermission}
                 className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
-                  notificationPermission === "granted"
+                  pushEnabled
                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                     : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
                 }`}
               >
-                {notificationPermission === "granted"
+                {pushEnabled
                   ? "Popup Alerts Enabled"
-                  : "Enable Popup Alerts"}
+                  : notificationPermission === "denied"
+                    ? "Retry Popup Alerts"
+                    : "Enable Popup Alerts"}
               </button>
             ) : null}
           </div>

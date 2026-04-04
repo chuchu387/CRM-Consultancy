@@ -10,6 +10,10 @@ import {
 import { toast } from "react-toastify";
 
 import api from "../api/axios";
+import {
+  browserSupportsPushNotifications,
+  ensurePushSubscription,
+} from "../utils/pushNotifications";
 import { useAuth } from "./AuthContext";
 
 const NotificationContext = createContext(null);
@@ -47,12 +51,6 @@ const persistSeenNotificationIds = (userId, ids) => {
 const canUseSystemNotifications = () =>
   typeof window !== "undefined" && "Notification" in window;
 
-const buildNotificationTargetUrl = (notification, role) => {
-  const fallbackPath = getDefaultNotificationLink(role);
-  const rawPath = notification.link || fallbackPath;
-  return new URL(rawPath, window.location.origin).toString();
-};
-
 const NotificationToast = ({ notification }) => (
   <div className="space-y-1">
     <p className="text-sm font-semibold text-gray-900">{notification.title}</p>
@@ -68,6 +66,7 @@ export const NotificationProvider = ({ children }) => {
   const [notificationPermission, setNotificationPermission] = useState(() =>
     canUseSystemNotifications() ? Notification.permission : "unsupported"
   );
+  const [pushEnabled, setPushEnabled] = useState(false);
   const initialLoadCompletedRef = useRef(false);
   const seenIdsRef = useRef(new Set());
 
@@ -81,46 +80,6 @@ export const NotificationProvider = ({ children }) => {
             notification.link || getDefaultNotificationLink(user?.role || "student");
         },
       });
-    },
-    [user?.role]
-  );
-
-  const showBrowserNotification = useCallback(
-    async (notification) => {
-      if (!canUseSystemNotifications() || Notification.permission !== "granted") {
-        return;
-      }
-
-      const targetUrl = buildNotificationTargetUrl(notification, user?.role || "student");
-      const options = {
-        body: notification.message,
-        icon: "/icons/icon-192.png",
-        badge: "/icons/badge-96.png",
-        tag: `crm-notification-${notification._id}`,
-        renotify: false,
-        data: {
-          url: targetUrl,
-        },
-      };
-
-      try {
-        if ("serviceWorker" in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-
-          if (registration?.showNotification) {
-            await registration.showNotification(notification.title, options);
-            return;
-          }
-        }
-
-        const systemNotification = new Notification(notification.title, options);
-        systemNotification.onclick = () => {
-          window.focus();
-          window.location.href = notification.link || getDefaultNotificationLink(user?.role);
-        };
-      } catch (notificationError) {
-        return notificationError;
-      }
     },
     [user?.role]
   );
@@ -149,16 +108,12 @@ export const NotificationProvider = ({ children }) => {
         .reverse()
         .forEach((item) => {
           showToastNotification(item);
-
-          if (typeof document !== "undefined" && document.visibilityState === "hidden") {
-            showBrowserNotification(item).catch(() => undefined);
-          }
         });
 
       freshNotifications.forEach((item) => seenIdsRef.current.add(item._id));
       persistSeenNotificationIds(user.id, Array.from(seenIdsRef.current));
     },
-    [showBrowserNotification, showToastNotification, user?.id]
+    [showToastNotification, user?.id]
   );
 
   const fetchNotifications = useCallback(
@@ -202,6 +157,7 @@ export const NotificationProvider = ({ children }) => {
       setNotifications([]);
       setLoading(false);
       setError("");
+      setPushEnabled(false);
       setNotificationPermission(canUseSystemNotifications() ? Notification.permission : "unsupported");
       return;
     }
@@ -244,6 +200,81 @@ export const NotificationProvider = ({ children }) => {
     return () => window.removeEventListener("focus", syncPermission);
   }, []);
 
+  useEffect(() => {
+    if (!user?.id || !token) {
+      return undefined;
+    }
+
+    const handleMessage = (event) => {
+      const messageType = event.data?.type;
+
+      if (messageType !== "crm_push_notification") {
+        return;
+      }
+
+      const payload = event.data?.payload || {};
+      const notification = {
+        _id: payload.notificationId,
+        title: payload.title,
+        message: payload.message,
+        link: payload.link || getDefaultNotificationLink(user.role),
+        type: payload.type || "system",
+        metadata: payload.metadata || {},
+        createdAt: payload.createdAt || new Date().toISOString(),
+        isRead: false,
+      };
+
+      if (!notification._id || seenIdsRef.current.has(notification._id)) {
+        return;
+      }
+
+      seenIdsRef.current.add(notification._id);
+      persistSeenNotificationIds(user.id, Array.from(seenIdsRef.current));
+      setNotifications((current) => [notification, ...current.filter((item) => item._id !== notification._id)]);
+      showToastNotification(notification);
+    };
+
+    navigator.serviceWorker?.addEventListener?.("message", handleMessage);
+
+    return () => {
+      navigator.serviceWorker?.removeEventListener?.("message", handleMessage);
+    };
+  }, [showToastNotification, token, user?.id, user?.role]);
+
+  const syncPushSubscription = useCallback(async () => {
+    if (!user?.id || !token || Notification.permission !== "granted") {
+      setPushEnabled(false);
+      return false;
+    }
+
+    try {
+      const result = await ensurePushSubscription();
+      setPushEnabled(Boolean(result?.subscribed));
+      return Boolean(result?.subscribed);
+    } catch (subscriptionError) {
+      setPushEnabled(false);
+      toast.error(
+        subscriptionError.response?.data?.message ||
+          subscriptionError.message ||
+          "Unable to enable popup alerts right now."
+      );
+      return false;
+    }
+  }, [token, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !token) {
+      return;
+    }
+
+    if (notificationPermission === "granted") {
+      syncPushSubscription().catch(() => undefined);
+      return;
+    }
+
+    setPushEnabled(false);
+  }, [notificationPermission, syncPushSubscription, token, user?.id]);
+
   const markAsRead = useCallback(async (id) => {
     try {
       await api.patch(`/notifications/${id}/read`);
@@ -267,7 +298,7 @@ export const NotificationProvider = ({ children }) => {
   const requestNotificationPermission = useCallback(async () => {
     if (!canUseSystemNotifications()) {
       toast.info("This browser does not support popup notifications.");
-      return "unsupported";
+      return { permission: "unsupported", enabled: false };
     }
 
     try {
@@ -275,17 +306,26 @@ export const NotificationProvider = ({ children }) => {
       setNotificationPermission(permission);
 
       if (permission === "granted") {
-        toast.success("Popup alerts are enabled.");
+        const subscribed = await syncPushSubscription();
+        if (subscribed) {
+          toast.success("Popup alerts are enabled.");
+        }
+
+        return { permission, enabled: subscribed };
       } else if (permission === "denied") {
+        setPushEnabled(false);
         toast.info("Popup alerts are blocked. Enable them from your browser settings.");
+        return { permission, enabled: false };
       }
 
-      return permission;
+      setPushEnabled(false);
+      return { permission, enabled: false };
     } catch (permissionError) {
       toast.error("Unable to request notification permission right now.");
-      return "denied";
+      setPushEnabled(false);
+      return { permission: "denied", enabled: false };
     }
-  }, []);
+  }, [syncPushSubscription]);
 
   const value = useMemo(
     () => ({
@@ -297,7 +337,8 @@ export const NotificationProvider = ({ children }) => {
       markAsRead,
       markAllAsRead,
       notificationPermission,
-      canUseBrowserNotifications: canUseSystemNotifications(),
+      pushEnabled,
+      canUseBrowserNotifications: browserSupportsPushNotifications(),
       requestNotificationPermission,
     }),
     [
@@ -308,6 +349,7 @@ export const NotificationProvider = ({ children }) => {
       markAsRead,
       notificationPermission,
       notifications,
+      pushEnabled,
       requestNotificationPermission,
     ]
   );

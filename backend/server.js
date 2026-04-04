@@ -19,6 +19,7 @@ const universityRoutes = require("./routes/universityRoutes");
 const userRoutes = require("./routes/userRoutes");
 const visaRoutes = require("./routes/visaRoutes");
 const errorHandler = require("./middleware/errorHandler");
+const { configurePushNotifications, hasPushConfig } = require("./utils/pushNotifications");
 const { seedDefaultAdmin } = require("./seed");
 
 dotenv.config();
@@ -114,11 +115,15 @@ const connectDatabase = async () => {
 const startServer = async () => {
   try {
     await connectDatabase();
+    configurePushNotifications();
     await seedDefaultAdmin();
 
     const port = process.env.PORT || 5000;
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
+      if (!hasPushConfig()) {
+        console.log("Web push is disabled because VAPID env vars are missing");
+      }
     });
   } catch (error) {
     console.error("Failed to start server:", error.message);

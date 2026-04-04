@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const { sendPushToUser } = require("./pushNotifications");
 
 const createNotification = async ({
   userId,
@@ -12,7 +13,7 @@ const createNotification = async ({
     return null;
   }
 
-  return Notification.create({
+  const notification = await Notification.create({
     userId,
     type,
     title,
@@ -20,6 +21,13 @@ const createNotification = async ({
     link,
     metadata,
   });
+
+  await sendPushToUser({
+    userId,
+    notification,
+  });
+
+  return notification;
 };
 
 module.exports = {

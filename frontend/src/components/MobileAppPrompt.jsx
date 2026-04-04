@@ -9,6 +9,7 @@ const MobileAppPrompt = () => {
   const {
     canUseBrowserNotifications,
     notificationPermission,
+    pushEnabled,
     requestNotificationPermission,
   } = useNotifications();
   const { canInstall, promptInstall, isInstalled, isIosInstallable, dismissed, dismissPrompt } =
@@ -19,7 +20,7 @@ const MobileAppPrompt = () => {
   }
 
   const needsInstall = !isInstalled && (canInstall || isIosInstallable);
-  const needsAlerts = canUseBrowserNotifications && notificationPermission !== "granted";
+  const needsAlerts = canUseBrowserNotifications && !pushEnabled;
 
   if (!needsInstall && !needsAlerts) {
     return null;

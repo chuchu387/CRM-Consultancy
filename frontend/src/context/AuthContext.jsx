@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import api from "../api/axios";
+import { unsubscribePushNotifications } from "../utils/pushNotifications";
 
 const AuthContext = createContext(null);
 
@@ -26,10 +27,16 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("crm_token"));
   const [loading, setLoading] = useState(true);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("crm_token");
-    setToken(null);
-    setUser(null);
+  const logout = useCallback(async () => {
+    try {
+      await unsubscribePushNotifications();
+    } catch (error) {
+      // Ignore logout cleanup failures and continue clearing auth state.
+    } finally {
+      localStorage.removeItem("crm_token");
+      setToken(null);
+      setUser(null);
+    }
   }, []);
 
   const updateUser = useCallback((payload) => {

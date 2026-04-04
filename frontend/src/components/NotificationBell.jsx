@@ -15,6 +15,7 @@ const NotificationBell = ({ role }) => {
     markAllAsRead,
     markAsRead,
     notificationPermission,
+    pushEnabled,
     canUseBrowserNotifications,
     requestNotificationPermission,
   } = useNotifications();
@@ -62,7 +63,7 @@ const NotificationBell = ({ role }) => {
           </div>
 
           <div className="mt-4 space-y-3">
-            {canUseBrowserNotifications && notificationPermission !== "granted" ? (
+            {canUseBrowserNotifications && !pushEnabled ? (
               <button
                 type="button"
                 onClick={requestNotificationPermission}

@@ -73,6 +73,39 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+self.addEventListener("push", (event) => {
+  const payload = event.data?.json?.() || {};
+  const notificationTitle = payload.title || "Consultancy CRM";
+  const targetUrl = payload.link || "/student/notifications";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const visibleClient = clients.find(
+        (client) => client.visibilityState === "visible" || client.focused
+      );
+
+      if (visibleClient) {
+        visibleClient.postMessage({
+          type: "crm_push_notification",
+          payload,
+        });
+        return undefined;
+      }
+
+      return self.registration.showNotification(notificationTitle, {
+        body: payload.message || "You have a new update.",
+        icon: "/icons/icon-192.png",
+        badge: "/icons/badge-96.png",
+        tag: `crm-notification-${payload.notificationId || Date.now()}`,
+        renotify: false,
+        data: {
+          url: targetUrl,
+        },
+      });
+    })
+  );
+});
+
 self.addEventListener("notificationclick", (event) => {
   const targetUrl = event.notification.data?.url || self.location.origin;
   event.notification.close();
