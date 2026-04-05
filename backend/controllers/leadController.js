@@ -1,5 +1,6 @@
 const Lead = require("../models/Lead");
 const User = require("../models/User");
+const { logAuditEvent } = require("../utils/audit");
 const { createNotification } = require("../utils/notification");
 
 const CLOSED_LEAD_STATUSES = new Set(["converted", "lost"]);
@@ -331,6 +332,22 @@ const createLead = async (req, res, next) => {
       });
     }
 
+    await logAuditEvent({
+      actor: req.user,
+      actionType: "lead_created",
+      entityType: "lead",
+      entityId: lead._id,
+      entityLabel: normalizedName,
+      summary: `Created lead ${normalizedName}`,
+      targetLeadId: lead._id,
+      metadata: {
+        source,
+        status,
+        assignedTo: assignedConsultancy._id,
+        followUpDate: leadFollowUpDate,
+      },
+    });
+
     const populatedLead = await populateLeadQuery(Lead.findById(lead._id));
 
     return res.status(201).json({
@@ -504,6 +521,33 @@ const updateLead = async (req, res, next) => {
       });
     }
 
+    await logAuditEvent({
+      actor: req.user,
+      actionType: "lead_updated",
+      entityType: "lead",
+      entityId: lead._id,
+      entityLabel: lead.name,
+      summary: `Updated lead ${lead.name}`,
+      targetLeadId: lead._id,
+      changes: {
+        status:
+          previousStatus !== nextStatus
+            ? { from: previousStatus, to: nextStatus }
+            : undefined,
+        assignedTo:
+          previousAssignedTo !== nextAssignedTo
+            ? { from: previousAssignedTo || null, to: nextAssignedTo || null }
+            : undefined,
+        followUpDate:
+          previousFollowUpDate !== nextFollowUpDateValue
+            ? { from: previousFollowUpDate || null, to: nextFollowUpDateValue || null }
+            : undefined,
+      },
+      metadata: {
+        source: nextSource,
+      },
+    });
+
     const populatedLead = await populateLeadQuery(Lead.findById(lead._id));
 
     return res.status(200).json({
@@ -550,6 +594,19 @@ const addLeadNote = async (req, res, next) => {
     });
 
     await lead.save();
+
+    await logAuditEvent({
+      actor: req.user,
+      actionType: "lead_note_added",
+      entityType: "lead",
+      entityId: lead._id,
+      entityLabel: lead.name,
+      summary: `Added an internal note to lead ${lead.name}`,
+      targetLeadId: lead._id,
+      metadata: {
+        noteLength: noteBody.length,
+      },
+    });
 
     const populatedLead = await populateLeadQuery(Lead.findById(lead._id));
 
@@ -623,6 +680,21 @@ const logLeadContact = async (req, res, next) => {
     });
 
     await lead.save();
+
+    await logAuditEvent({
+      actor: req.user,
+      actionType: "lead_contact_logged",
+      entityType: "lead",
+      entityId: lead._id,
+      entityLabel: lead.name,
+      summary: `Logged ${channel} follow-up for ${lead.name}`,
+      targetLeadId: lead._id,
+      metadata: {
+        channel,
+        status: lead.status,
+        nextFollowUpDate,
+      },
+    });
 
     const populatedLead = await populateLeadQuery(Lead.findById(lead._id));
 
@@ -712,6 +784,20 @@ const convertLeadToStudent = async (req, res, next) => {
 
     await lead.save();
 
+    await logAuditEvent({
+      actor: req.user,
+      actionType: "lead_converted",
+      entityType: "lead",
+      entityId: lead._id,
+      entityLabel: lead.name,
+      summary: `Converted lead ${lead.name} into student ${student.email}`,
+      targetLeadId: lead._id,
+      targetStudentId: student._id,
+      metadata: {
+        studentEmail,
+      },
+    });
+
     const populatedLead = await populateLeadQuery(Lead.findById(lead._id));
 
     return res.status(201).json({
@@ -724,8 +810,97 @@ const convertLeadToStudent = async (req, res, next) => {
   }
 };
 
+const bulkAssignLeads = async (req, res, next) => {
+  try {
+    const leadIds = Array.isArray(req.body.leadIds)
+      ? req.body.leadIds.map((leadId) => String(leadId || "")).filter(Boolean)
+      : [];
+    const assignedTo = String(req.body.assignedTo || "");
+
+    if (!leadIds.length || !assignedTo) {
+      return res.status(400).json({
+        success: false,
+        message: "Lead IDs and assignee are required",
+      });
+    }
+
+    const assignedConsultancy = await ensureConsultancyUser(assignedTo);
+
+    if (!assignedConsultancy) {
+      return res.status(404).json({
+        success: false,
+        message: "Assigned consultancy user not found",
+      });
+    }
+
+    const leads = await Lead.find({ _id: { $in: leadIds } });
+
+    if (!leads.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No leads found for the selected IDs",
+      });
+    }
+
+    await Promise.all(
+      leads.map(async (lead) => {
+        const previousAssignedTo = lead.assignedTo ? String(lead.assignedTo) : "";
+
+        lead.assignedTo = assignedConsultancy._id;
+        appendLeadActivity({
+          lead,
+          action: "assignee_changed",
+          message: `Lead assigned to ${assignedConsultancy.name}`,
+          createdBy: req.user.id,
+        });
+        await lead.save();
+
+        await logAuditEvent({
+          actor: req.user,
+          actionType: "lead_bulk_assigned",
+          entityType: "lead",
+          entityId: lead._id,
+          entityLabel: lead.name,
+          summary: `Bulk-assigned lead ${lead.name} to ${assignedConsultancy.name}`,
+          targetLeadId: lead._id,
+          changes: {
+            assignedTo: {
+              from: previousAssignedTo || null,
+              to: String(assignedConsultancy._id),
+            },
+          },
+        });
+
+        if (String(assignedConsultancy._id) !== String(req.user.id)) {
+          await createNotification({
+            userId: assignedConsultancy._id,
+            type: "lead",
+            title: "Lead assignment updated",
+            message: `${lead.name} was assigned to you`,
+            link: "/consultancy/leads",
+            metadata: { leadId: lead._id },
+          });
+        }
+      })
+    );
+
+    const refreshedLeads = await populateLeadQuery(
+      Lead.find({ _id: { $in: leadIds } }).sort({ updatedAt: -1 })
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: refreshedLeads,
+      message: `Assigned ${refreshedLeads.length} lead${refreshedLeads.length === 1 ? "" : "s"} successfully`,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   addLeadNote,
+  bulkAssignLeads,
   convertLeadToStudent,
   createLead,
   getLeadById,

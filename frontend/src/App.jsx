@@ -15,9 +15,11 @@ import Register from "./pages/Register";
 import ConsultancyDashboard from "./pages/consultancy/Dashboard";
 import DocumentRequests from "./pages/consultancy/DocumentRequests";
 import Applications from "./pages/consultancy/Applications";
+import AuditLogs from "./pages/consultancy/AuditLogs";
 import Invoices from "./pages/consultancy/Invoices";
 import Leads from "./pages/consultancy/Leads";
 import Meetings from "./pages/consultancy/Meetings";
+import Reports from "./pages/consultancy/Reports";
 import Search from "./pages/consultancy/Search";
 import StudentDetail from "./pages/consultancy/StudentDetail";
 import Students from "./pages/consultancy/Students";
@@ -93,6 +95,8 @@ const AppRoutes = () => (
         <Route path="templates" element={<Templates />} />
         <Route path="meetings" element={<Meetings />} />
         <Route path="tasks" element={<Tasks />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="audit-logs" element={<AuditLogs />} />
         <Route
           path="applications"
           element={<Navigate to="/consultancy/university-applications" replace />}

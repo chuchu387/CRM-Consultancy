@@ -32,6 +32,7 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         { label: "Dashboard", path: "/consultancy/dashboard", icon: HiOutlineHome },
         { label: "Leads", path: "/consultancy/leads", icon: HiOutlineUserPlus },
         { label: "Students", path: "/consultancy/students", icon: HiOutlineUsers },
+        { label: "Reports", path: "/consultancy/reports", icon: HiOutlineClipboardDocumentList },
         {
           label: "Visa Applications",
           path: "/consultancy/visa",
@@ -51,6 +52,7 @@ const Sidebar = ({ role, isOpen, onClose }) => {
           icon: HiOutlineRectangleStack,
         },
         { label: "Invoices", path: "/consultancy/invoices", icon: HiOutlineReceiptPercent },
+        { label: "Audit Logs", path: "/consultancy/audit-logs", icon: HiOutlineDocumentText },
         { label: "Search", path: "/consultancy/search", icon: HiOutlineMagnifyingGlass },
         { label: "Notifications", path: "/consultancy/notifications", icon: HiOutlineBellAlert },
         { label: "Profile", path: "/consultancy/profile", icon: HiOutlineUserCircle },

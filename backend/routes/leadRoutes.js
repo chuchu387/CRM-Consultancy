@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
   addLeadNote,
+  bulkAssignLeads,
   convertLeadToStudent,
   createLead,
   getLeadById,
@@ -14,6 +15,7 @@ const { isConsultancy } = require("../middleware/role");
 
 const router = express.Router();
 
+router.post("/bulk-assign", protect, isConsultancy, bulkAssignLeads);
 router.get("/", protect, isConsultancy, getLeads);
 router.get("/:id", protect, isConsultancy, getLeadById);
 router.post("/", protect, isConsultancy, createLead);

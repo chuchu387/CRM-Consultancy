@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthContext";
 import useApi from "../../hooks/useApi";
 import usePagination from "../../hooks/usePagination";
 import { formatDateOnly, formatDateTime } from "../../utils/date";
+import { downloadCsv, downloadPdf } from "../../utils/export";
 import {
   formatLeadSource,
   formatLeadStatus,
@@ -23,6 +24,7 @@ import {
   LEAD_SOURCE_OPTIONS,
   LEAD_STATUS_OPTIONS,
 } from "../../utils/lead";
+import { dispatchReminderBatch, launchReminderDispatch } from "../../utils/reminders";
 
 const initialLeadForm = {
   name: "",
@@ -73,6 +75,8 @@ const Leads = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailLead, setDetailLead] = useState(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+  const [bulkAssignedTo, setBulkAssignedTo] = useState("");
   const [leadForm, setLeadForm] = useState(initialLeadForm);
   const [contactForm, setContactForm] = useState(initialContactForm);
   const [convertForm, setConvertForm] = useState(initialConvertForm);
@@ -187,6 +191,7 @@ const Leads = () => {
     }),
     [leads]
   );
+  const consultancyName = user?.name || "Consultancy CRM";
 
   const {
     currentPage,
@@ -204,6 +209,52 @@ const Leads = () => {
   useEffect(() => {
     resetPage();
   }, [resetPage, searchTerm, sourceFilter, statusFilter]);
+
+  useEffect(() => {
+    setSelectedLeadIds((current) =>
+      current.filter((leadId) => filteredLeads.some((lead) => lead._id === leadId))
+    );
+  }, [filteredLeads]);
+
+  const selectedLeads = useMemo(
+    () => filteredLeads.filter((lead) => selectedLeadIds.includes(lead._id)),
+    [filteredLeads, selectedLeadIds]
+  );
+
+  const toggleLeadSelection = useCallback((leadId) => {
+    setSelectedLeadIds((current) =>
+      current.includes(leadId)
+        ? current.filter((selectedId) => selectedId !== leadId)
+        : [...current, leadId]
+    );
+  }, []);
+
+  const toggleCurrentPageSelection = useCallback(() => {
+    const pageLeadIds = paginatedItems.map((lead) => lead._id);
+    const allSelected = pageLeadIds.every((leadId) => selectedLeadIds.includes(leadId));
+
+    setSelectedLeadIds((current) =>
+      allSelected
+        ? current.filter((leadId) => !pageLeadIds.includes(leadId))
+        : Array.from(new Set([...current, ...pageLeadIds]))
+    );
+  }, [paginatedItems, selectedLeadIds]);
+
+  const buildBulkLeadReminder = useCallback(
+    (lead) => ({
+      reminderType: "lead_follow_up",
+      entityType: "lead",
+      entityId: lead._id,
+      entityLabel: lead.name,
+      leadId: lead._id,
+      recipientName: lead.name,
+      recipientEmail: lead.email || "",
+      recipientPhone: lead.phone || "",
+      subject: `Follow-up reminder from ${consultancyName}`,
+      message: `Hello,\n\nThis is a follow-up reminder from ${consultancyName}. Please get back to our consultancy team regarding your study inquiry.\n\nThank you.`,
+    }),
+    [consultancyName]
+  );
 
   const openCreateModal = () => {
     resetCreateForm();
@@ -273,6 +324,112 @@ const Leads = () => {
     } finally {
       setSubmitting("");
     }
+  };
+
+  const handleBulkAssign = async () => {
+    if (!selectedLeadIds.length) {
+      toast.info("Select at least one lead first");
+      return;
+    }
+
+    if (!bulkAssignedTo) {
+      toast.error("Select a counselor for bulk assignment");
+      return;
+    }
+
+    setSubmitting("bulk-assign");
+
+    try {
+      await api.post("/leads/bulk-assign", {
+        leadIds: selectedLeadIds,
+        assignedTo: bulkAssignedTo,
+      });
+
+      toast.success("Selected leads assigned");
+      setSelectedLeadIds([]);
+      setBulkAssignedTo("");
+      await refetch();
+    } catch (assignError) {
+      toast.error(assignError.response?.data?.message || "Unable to assign selected leads");
+    } finally {
+      setSubmitting("");
+    }
+  };
+
+  const handleBulkReminder = async () => {
+    if (!selectedLeads.length) {
+      toast.info("Select at least one lead first");
+      return;
+    }
+
+    if (selectedLeads.some((lead) => !lead.email)) {
+      toast.error("All selected leads need an email address for bulk reminders");
+      return;
+    }
+
+    setSubmitting("bulk-reminder");
+
+    try {
+      const response = await dispatchReminderBatch({
+        channel: "email",
+        reminders: selectedLeads.map(buildBulkLeadReminder),
+      });
+
+      launchReminderDispatch({
+        channel: "email",
+        dispatches: response.dispatches,
+        combinedDispatchUrl: response.combinedDispatchUrl,
+      });
+
+      toast.success("Bulk follow-up reminder prepared");
+    } catch (reminderError) {
+      toast.error(reminderError.response?.data?.message || reminderError.message || "Unable to prepare reminders");
+    } finally {
+      setSubmitting("");
+    }
+  };
+
+  const handleBulkExport = (format) => {
+    if (!selectedLeads.length) {
+      toast.info("Select at least one lead first");
+      return;
+    }
+
+    const rows = selectedLeads.map((lead) => ({
+      Name: lead.name,
+      Email: lead.email || "",
+      Phone: lead.phone || "",
+      Country: lead.country || "",
+      Course: lead.interestedCourse || "",
+      Intake: lead.interestedIntake || "",
+      Status: formatLeadStatus(lead.status),
+      Source: formatLeadSource(lead.source),
+      AssignedTo: lead.assignedTo?.name || "",
+      FollowUpDate: formatDateTime(lead.followUpDate, ""),
+    }));
+
+    if (format === "csv") {
+      downloadCsv("selected-leads", rows);
+      return;
+    }
+
+    downloadPdf({
+      filename: "selected-leads",
+      title: "Selected Leads",
+      columns: ["Name", "Email", "Phone", "Country", "Course", "Intake", "Status", "Source", "Assigned To", "Follow-Up"],
+      rows: rows.map((row) => [
+        row.Name,
+        row.Email,
+        row.Phone,
+        row.Country,
+        row.Course,
+        row.Intake,
+        row.Status,
+        row.Source,
+        row.AssignedTo,
+        row.FollowUpDate,
+      ]),
+    });
   };
 
   const handleUpdateLead = async (event) => {
@@ -500,6 +657,75 @@ const Leads = () => {
       </div>
 
       <div className="grid gap-4">
+        {selectedLeadIds.length ? (
+          <div className="rounded-[1.75rem] border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-900">
+                  {selectedLeadIds.length} lead{selectedLeadIds.length === 1 ? "" : "s"} selected
+                </p>
+                <p className="mt-1 text-sm text-blue-700">
+                  Bulk assign leads, send follow-up reminders, or export the selected set.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 lg:flex-row">
+                <button
+                  type="button"
+                  onClick={toggleCurrentPageSelection}
+                  className="rounded-2xl border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                >
+                  {paginatedItems.every((lead) => selectedLeadIds.includes(lead._id))
+                    ? "Clear Page"
+                    : "Select Page"}
+                </button>
+                <select
+                  value={bulkAssignedTo}
+                  onChange={(event) => setBulkAssignedTo(event.target.value)}
+                  className="rounded-2xl border border-blue-200 bg-white px-4 py-2 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                >
+                  <option value="">Assign to counselor</option>
+                  {consultancies.map((consultancy) => (
+                    <option key={consultancy._id} value={consultancy._id}>
+                      {consultancy.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={submitting === "bulk-assign"}
+                  onClick={handleBulkAssign}
+                  className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
+                >
+                  {submitting === "bulk-assign" ? "Assigning..." : "Assign Selected"}
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting === "bulk-reminder"}
+                  onClick={handleBulkReminder}
+                  className="rounded-2xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:border-blue-100 disabled:text-blue-300"
+                >
+                  {submitting === "bulk-reminder" ? "Preparing..." : "Email Reminder"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkExport("csv")}
+                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                >
+                  Export CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkExport("pdf")}
+                  className="rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                >
+                  Export PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {!loading && filteredLeads.length ? (
           <div className="overflow-hidden rounded-[2rem] border border-gray-200 bg-white shadow-sm">
             <Pagination
@@ -527,43 +753,56 @@ const Leads = () => {
           ))
         ) : filteredLeads.length ? (
           paginatedItems.map((lead) => (
-            <StudentSummaryCard
-              key={lead._id}
-              label="Lead"
-              name={lead.name}
-              email={lead.email || lead.phone}
-              meta={`${lead.phone}${lead.country ? ` • ${lead.country}` : ""}`}
-              stats={[
-                { label: "Stage", value: formatLeadStatus(lead.status) },
-                { label: "Source", value: formatLeadSource(lead.source) },
-                {
-                  label: "Follow-Up",
-                  value: formatDateOnly(lead.followUpDate, "Not scheduled"),
-                  tone: lead.followUpDate ? "amber" : "default",
-                },
-                {
-                  label: "Assigned",
-                  value: lead.assignedTo?.name || "Unassigned",
-                },
-              ]}
-              updatedText={`Updated ${formatDateTime(lead.updatedAt)}`}
-              actionLabel="View"
-              onAction={() => openDetailModal(lead._id)}
-            >
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge status={lead.status} label={formatLeadStatus(lead.status)} />
-                {lead.convertedStudentId ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/consultancy/students/${lead.convertedStudentId._id}`)}
-                    className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
-                  >
-                    <HiOutlineArrowTopRightOnSquare className="h-3.5 w-3.5" />
-                    View Student
-                  </button>
-                ) : null}
+            <div key={lead._id} className="flex items-start gap-3">
+              <label className="mt-5 flex shrink-0 items-center rounded-2xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedLeadIds.includes(lead._id)}
+                  onChange={() => toggleLeadSelection(lead._id)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+              <div className="min-w-0 flex-1">
+                <StudentSummaryCard
+                  label="Lead"
+                  name={lead.name}
+                  email={lead.email || lead.phone}
+                  meta={`${lead.phone}${lead.country ? ` • ${lead.country}` : ""}`}
+                  stats={[
+                    { label: "Stage", value: formatLeadStatus(lead.status) },
+                    { label: "Source", value: formatLeadSource(lead.source) },
+                    {
+                      label: "Follow-Up",
+                      value: formatDateOnly(lead.followUpDate, "Not scheduled"),
+                      tone: lead.followUpDate ? "amber" : "default",
+                    },
+                    {
+                      label: "Assigned",
+                      value: lead.assignedTo?.name || "Unassigned",
+                    },
+                  ]}
+                  updatedText={`Updated ${formatDateTime(lead.updatedAt)}`}
+                  actionLabel="View"
+                  onAction={() => openDetailModal(lead._id)}
+                >
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge status={lead.status} label={formatLeadStatus(lead.status)} />
+                    {lead.convertedStudentId ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(`/consultancy/students/${lead.convertedStudentId._id}`)
+                        }
+                        className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                      >
+                        <HiOutlineArrowTopRightOnSquare className="h-3.5 w-3.5" />
+                        View Student
+                      </button>
+                    ) : null}
+                  </div>
+                </StudentSummaryCard>
               </div>
-            </StudentSummaryCard>
+            </div>
           ))
         ) : (
           <div className="rounded-[2rem] border border-dashed border-gray-300 bg-white p-12 text-center">

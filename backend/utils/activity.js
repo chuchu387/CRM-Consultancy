@@ -1,4 +1,5 @@
 const ActivityLog = require("../models/ActivityLog");
+const { logAuditEvent } = require("./audit");
 
 const logStudentActivity = async ({
   studentId,
@@ -13,7 +14,7 @@ const logStudentActivity = async ({
     return null;
   }
 
-  return ActivityLog.create({
+  const activity = await ActivityLog.create({
     studentId,
     actorId: actor.id,
     actorName: actor.name,
@@ -24,6 +25,19 @@ const logStudentActivity = async ({
     message,
     metadata,
   });
+
+  await logAuditEvent({
+    actor,
+    actionType,
+    entityType,
+    entityId,
+    entityLabel: message,
+    summary: message,
+    targetStudentId: studentId,
+    metadata,
+  });
+
+  return activity;
 };
 
 module.exports = {
