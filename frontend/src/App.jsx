@@ -16,6 +16,7 @@ import ConsultancyDashboard from "./pages/consultancy/Dashboard";
 import DocumentRequests from "./pages/consultancy/DocumentRequests";
 import Applications from "./pages/consultancy/Applications";
 import Invoices from "./pages/consultancy/Invoices";
+import Leads from "./pages/consultancy/Leads";
 import Meetings from "./pages/consultancy/Meetings";
 import Search from "./pages/consultancy/Search";
 import StudentDetail from "./pages/consultancy/StudentDetail";
@@ -84,6 +85,7 @@ const AppRoutes = () => (
       <Route path="/consultancy" element={<DashboardLayout role="consultancy" />}>
         <Route index element={<Navigate to="/consultancy/dashboard" replace />} />
         <Route path="dashboard" element={<ConsultancyDashboard />} />
+        <Route path="leads" element={<Leads />} />
         <Route path="students" element={<Students />} />
         <Route path="students/:id" element={<StudentDetail />} />
         <Route path="visa" element={<VisaApplications />} />

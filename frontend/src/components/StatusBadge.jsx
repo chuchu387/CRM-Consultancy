@@ -1,6 +1,6 @@
 import { getStatusTheme } from "../utils/status";
 
-const StatusBadge = ({ status, compact = false }) => {
+const StatusBadge = ({ status, label = "", compact = false }) => {
   const theme = getStatusTheme(status);
 
   return (
@@ -9,7 +9,7 @@ const StatusBadge = ({ status, compact = false }) => {
         compact ? "px-2 py-0.5 text-[11px]" : "px-3 py-1 text-xs"
       }`}
     >
-      {status}
+      {label || status}
     </span>
   );
 };

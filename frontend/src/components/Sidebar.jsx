@@ -13,6 +13,7 @@ import {
   HiOutlineReceiptPercent,
   HiOutlineSparkles,
   HiOutlineUserCircle,
+  HiOutlineUserPlus,
   HiOutlineUsers,
   HiXMark,
 } from "react-icons/hi2";
@@ -29,6 +30,7 @@ const Sidebar = ({ role, isOpen, onClose }) => {
     if (role === "consultancy") {
       return [
         { label: "Dashboard", path: "/consultancy/dashboard", icon: HiOutlineHome },
+        { label: "Leads", path: "/consultancy/leads", icon: HiOutlineUserPlus },
         { label: "Students", path: "/consultancy/students", icon: HiOutlineUsers },
         {
           label: "Visa Applications",

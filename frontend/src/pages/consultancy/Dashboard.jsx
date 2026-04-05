@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isSameDay } from "date-fns";
-import { HiOutlineCalendarDays, HiOutlineClipboardDocumentList, HiOutlineUsers } from "react-icons/hi2";
+import {
+  HiOutlineCalendarDays,
+  HiOutlineClipboardDocumentList,
+  HiOutlineUserPlus,
+  HiOutlineUsers,
+} from "react-icons/hi2";
 import { toast } from "react-toastify";
 
 import api from "../../api/axios";
 import StatusBadge from "../../components/StatusBadge";
 import useCurrentDay from "../../hooks/useCurrentDay";
 import { formatDateTime } from "../../utils/date";
+import { formatLeadStatus, isClosedLead } from "../../utils/lead";
 
 const statConfig = [
   { key: "students", label: "Total Students", icon: HiOutlineUsers },
+  { key: "leads", label: "Open Leads", icon: HiOutlineUserPlus },
   { key: "visas", label: "Active Visa Applications", icon: HiOutlineClipboardDocumentList },
   { key: "documents", label: "Pending Documents", icon: HiOutlineClipboardDocumentList },
   { key: "meetings", label: "Upcoming Meetings", icon: HiOutlineCalendarDays },
@@ -18,6 +25,7 @@ const statConfig = [
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [visas, setVisas] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [meetings, setMeetings] = useState([]);
@@ -27,15 +35,17 @@ const Dashboard = () => {
     setLoading(true);
 
     try {
-      const [studentsResponse, visaResponse, documentsResponse, meetingsResponse] =
+      const [studentsResponse, leadsResponse, visaResponse, documentsResponse, meetingsResponse] =
         await Promise.all([
           api.get("/users/students"),
+          api.get("/leads"),
           api.get("/visa"),
           api.get("/documents"),
           api.get("/meetings"),
         ]);
 
       setStudents(studentsResponse.data.data || []);
+      setLeads(leadsResponse.data.data || []);
       setVisas(visaResponse.data.data || []);
       setDocuments(documentsResponse.data.data || []);
       setMeetings(meetingsResponse.data.data || []);
@@ -53,6 +63,7 @@ const Dashboard = () => {
   const stats = useMemo(
     () => ({
       students: students.length,
+      leads: leads.filter((lead) => !isClosedLead(lead.status)).length,
       visas: visas.filter((visa) => !["Approved", "Rejected"].includes(visa.status)).length,
       documents: documents.filter((doc) =>
         ["pending", "uploaded", "changes_requested", "rejected"].includes(doc.status)
@@ -66,7 +77,7 @@ const Dashboard = () => {
         );
       }).length,
     }),
-    [documents, meetings, students.length, visas]
+    [documents, leads, meetings, students.length, visas]
   );
 
   const recentActivity = useMemo(
@@ -103,6 +114,21 @@ const Dashboard = () => {
         isSameDay(new Date(meeting.confirmedDate || meeting.proposedDate), currentDay)
       ),
     [currentDay, scheduledMeetings]
+  );
+
+  const todaysLeadFollowUps = useMemo(
+    () =>
+      [...leads]
+        .filter(
+          (lead) =>
+            lead.followUpDate &&
+            !isClosedLead(lead.status) &&
+            isSameDay(new Date(lead.followUpDate), currentDay)
+        )
+        .sort(
+          (a, b) => new Date(a.followUpDate || 0).getTime() - new Date(b.followUpDate || 0).getTime()
+        ),
+    [currentDay, leads]
   );
 
   return (
@@ -179,56 +205,106 @@ const Dashboard = () => {
           </div>
         </section>
 
-        <section className="glass-panel p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">
-            Today
-          </p>
-          <h3 className="mt-2 font-heading text-2xl font-semibold text-gray-900">
-            Meetings scheduled today
-          </h3>
-          <p className="mt-2 text-sm text-gray-500">
-            Daily meeting view for {formatDateTime(currentDay, "today")}. Student names refresh
-            automatically when the day changes.
-          </p>
+        <div className="space-y-6">
+          <section className="glass-panel p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">
+              Follow-Ups
+            </p>
+            <h3 className="mt-2 font-heading text-2xl font-semibold text-gray-900">
+              Leads to follow up today
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Daily lead reminders for {formatDateTime(currentDay, "today")}.
+            </p>
 
-          <div className="mt-6 space-y-4">
-            {loading ? (
-              Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
-                  <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
-                  <div className="mt-3 h-4 w-52 animate-pulse rounded bg-gray-100" />
-                </div>
-              ))
-            ) : todaysMeetings.length ? (
-              todaysMeetings.map((meeting) => (
-                <div
-                  key={meeting._id}
-                  className="rounded-3xl border border-gray-100 bg-gray-50 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-gray-900">{meeting.title}</p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {meeting.studentId?.name || "Student"}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        {meeting.studentId?.email || "No email"}
-                      </p>
-                    </div>
-                    <StatusBadge status={meeting.status} />
+            <div className="mt-6 space-y-4">
+              {loading ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                    <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+                    <div className="mt-3 h-4 w-52 animate-pulse rounded bg-gray-100" />
                   </div>
-                  <p className="mt-3 text-sm text-gray-600">
-                    {formatDateTime(meeting.confirmedDate || meeting.proposedDate)}
-                  </p>
+                ))
+              ) : todaysLeadFollowUps.length ? (
+                todaysLeadFollowUps.map((lead) => (
+                  <div key={lead._id} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-gray-900">{lead.name}</p>
+                        <p className="mt-1 text-sm text-gray-500">{lead.phone}</p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {lead.interestedCourse || "Course not added"}
+                        </p>
+                      </div>
+                      <StatusBadge
+                        status={lead.status}
+                        label={formatLeadStatus(lead.status)}
+                      />
+                    </div>
+                    <p className="mt-3 text-sm text-gray-600">
+                      Follow-Up {formatDateTime(lead.followUpDate)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-3xl border border-dashed border-gray-300 bg-gray-50 p-8 text-sm text-gray-500">
+                  No lead follow-ups are scheduled for today.
                 </div>
-              ))
-            ) : (
-              <div className="rounded-3xl border border-dashed border-gray-300 bg-gray-50 p-8 text-sm text-gray-500">
-                No meetings are scheduled for today.
-              </div>
-            )}
-          </div>
-        </section>
+              )}
+            </div>
+          </section>
+
+          <section className="glass-panel p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">
+              Today
+            </p>
+            <h3 className="mt-2 font-heading text-2xl font-semibold text-gray-900">
+              Meetings scheduled today
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Daily meeting view for {formatDateTime(currentDay, "today")}. Student names refresh
+              automatically when the day changes.
+            </p>
+
+            <div className="mt-6 space-y-4">
+              {loading ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                    <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+                    <div className="mt-3 h-4 w-52 animate-pulse rounded bg-gray-100" />
+                  </div>
+                ))
+              ) : todaysMeetings.length ? (
+                todaysMeetings.map((meeting) => (
+                  <div
+                    key={meeting._id}
+                    className="rounded-3xl border border-gray-100 bg-gray-50 p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-gray-900">{meeting.title}</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {meeting.studentId?.name || "Student"}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {meeting.studentId?.email || "No email"}
+                        </p>
+                      </div>
+                      <StatusBadge status={meeting.status} />
+                    </div>
+                    <p className="mt-3 text-sm text-gray-600">
+                      {formatDateTime(meeting.confirmedDate || meeting.proposedDate)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-3xl border border-dashed border-gray-300 bg-gray-50 p-8 text-sm text-gray-500">
+                  No meetings are scheduled for today.
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
 
       <section className="glass-panel p-6">

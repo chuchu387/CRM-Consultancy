@@ -14,6 +14,34 @@ const statusThemeMap = {
     badge: "bg-amber-100 text-amber-700 ring-amber-200",
     dot: "bg-amber-500",
   },
+  new: {
+    badge: "bg-sky-100 text-sky-700 ring-sky-200",
+    dot: "bg-sky-500",
+  },
+  contacted: {
+    badge: "bg-cyan-100 text-cyan-700 ring-cyan-200",
+    dot: "bg-cyan-500",
+  },
+  counseling: {
+    badge: "bg-indigo-100 text-indigo-700 ring-indigo-200",
+    dot: "bg-indigo-500",
+  },
+  documents_pending: {
+    badge: "bg-amber-100 text-amber-700 ring-amber-200",
+    dot: "bg-amber-500",
+  },
+  application_in_progress: {
+    badge: "bg-violet-100 text-violet-700 ring-violet-200",
+    dot: "bg-violet-500",
+  },
+  converted: {
+    badge: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+    dot: "bg-emerald-500",
+  },
+  lost: {
+    badge: "bg-rose-100 text-rose-700 ring-rose-200",
+    dot: "bg-rose-500",
+  },
   partial: {
     badge: "bg-amber-100 text-amber-700 ring-amber-200",
     dot: "bg-amber-500",

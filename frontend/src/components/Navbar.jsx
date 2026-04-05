@@ -7,6 +7,7 @@ import NotificationBell from "./NotificationBell";
 
 const titleMatchers = [
   { match: "/consultancy/dashboard", title: "Consultancy Dashboard" },
+  { match: "/consultancy/leads", title: "Lead Management" },
   { match: "/consultancy/students", title: "Students" },
   { match: "/consultancy/visa", title: "Visa Applications" },
   { match: "/consultancy/documents", title: "Document Requests" },

@@ -10,6 +10,7 @@ const authRoutes = require("./routes/authRoutes");
 const activityRoutes = require("./routes/activityRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
+const leadRoutes = require("./routes/leadRoutes");
 const meetingRoutes = require("./routes/meetingRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
@@ -94,6 +95,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/leads", leadRoutes);
 app.use("/api/visa", visaRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/meetings", meetingRoutes);
