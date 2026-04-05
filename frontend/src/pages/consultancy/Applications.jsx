@@ -333,42 +333,57 @@ const Applications = () => {
         ) : null}
 
         {loading ? (
-          Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="rounded-[1.75rem] border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="h-4 w-44 animate-pulse rounded bg-gray-200" />
-            </div>
-          ))
-        ) : studentGroups.length ? (
-          paginatedStudentGroups.map((group) => (
-            <StudentSummaryCard
-              key={group.studentId}
-              name={group.studentName}
-              email={group.studentEmail}
-              meta={
-                group.applications[0]
-                  ? `Latest ${group.applications[0].country} • ${group.applications[0].universityName}`
-                  : ""
-              }
-              stats={[
-                { label: "Applications", value: group.totalApplications },
-                { label: "Active", value: group.activeCount, tone: "blue" },
-                { label: "Offer Received", value: group.offerReceivedCount, tone: "emerald" },
-              ]}
-              updatedText={`Updated ${formatDateTime(group.latestUpdatedAt)}`}
-              onAction={() => setSelectedStudentId(group.studentId)}
-            >
-              <div className="flex flex-wrap gap-2">
-                {group.applications.slice(0, 3).map((item) => (
-                  <span
-                    key={item._id}
-                    className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600"
-                  >
-                    {item.country}
-                  </span>
-                ))}
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="h-3 w-12 animate-pulse rounded bg-gray-100" />
+                <div className="mt-3 h-4 w-32 animate-pulse rounded bg-gray-200" />
+                <div className="mt-2 h-3 w-24 animate-pulse rounded bg-gray-100" />
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {Array.from({ length: 3 }).map((__, statIndex) => (
+                    <div key={statIndex} className="rounded-xl bg-gray-50 px-3 py-2">
+                      <div className="h-2 w-10 animate-pulse rounded bg-gray-100" />
+                      <div className="mt-2 h-4 w-8 animate-pulse rounded bg-gray-200" />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </StudentSummaryCard>
-          ))
+            ))}
+          </div>
+        ) : studentGroups.length ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {paginatedStudentGroups.map((group) => (
+              <StudentSummaryCard
+                key={group.studentId}
+                compact
+                name={group.studentName}
+                email={group.studentEmail}
+                meta={
+                  group.applications[0]
+                    ? `Latest ${group.applications[0].country} • ${group.applications[0].universityName}`
+                    : ""
+                }
+                stats={[
+                  { label: "Applications", value: group.totalApplications },
+                  { label: "Active", value: group.activeCount, tone: "blue" },
+                  { label: "Offer Received", value: group.offerReceivedCount, tone: "emerald" },
+                ]}
+                updatedText={`Updated ${formatDateTime(group.latestUpdatedAt)}`}
+                onAction={() => setSelectedStudentId(group.studentId)}
+              >
+                <div className="flex flex-wrap gap-1.5">
+                  {group.applications.slice(0, 3).map((item) => (
+                    <span
+                      key={item._id}
+                      className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600"
+                    >
+                      {item.country}
+                    </span>
+                  ))}
+                </div>
+              </StudentSummaryCard>
+            ))}
+          </div>
         ) : (
           <div className="rounded-[2rem] border border-dashed border-gray-300 bg-white p-12 text-center">
             <div className="inline-flex rounded-3xl bg-blue-50 p-4 text-blue-600">
