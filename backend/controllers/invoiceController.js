@@ -76,7 +76,9 @@ const getInvoicesByStudent = async (req, res, next) => {
 
 const getMyInvoices = async (req, res, next) => {
   try {
-    const invoices = await Invoice.find({ studentId: req.user.id }).sort({ createdAt: -1 });
+    const invoices = await populateInvoiceQuery(
+      Invoice.find({ studentId: req.user.id }).sort({ createdAt: -1 })
+    );
 
     return res.status(200).json({
       success: true,

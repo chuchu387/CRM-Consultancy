@@ -1,12 +1,19 @@
-import { useEffect } from "react";
-import { HiOutlineReceiptPercent } from "react-icons/hi2";
+import { useCallback, useEffect } from "react";
+import {
+  HiOutlineArrowDownTray,
+  HiOutlinePrinter,
+  HiOutlineReceiptPercent,
+} from "react-icons/hi2";
 import { toast } from "react-toastify";
 
 import StatusBadge from "../../components/StatusBadge";
+import { useAuth } from "../../context/AuthContext";
 import useApi from "../../hooks/useApi";
 import { formatDateTime } from "../../utils/date";
+import { downloadInvoicePdf, printInvoiceDocument } from "../../utils/invoiceDocument";
 
 const MyInvoices = () => {
+  const { user } = useAuth();
   const { data: invoices, loading, error } = useApi("/invoices/my");
 
   useEffect(() => {
@@ -14,6 +21,31 @@ const MyInvoices = () => {
       toast.error(error);
     }
   }, [error]);
+
+  const handleDownloadInvoice = useCallback(
+    (invoice) => {
+      downloadInvoicePdf({
+        invoice,
+        studentName: user?.name,
+        studentEmail: user?.email,
+        consultancyName: invoice?.createdBy?.name || "Consultancy CRM",
+      });
+    },
+    [user?.email, user?.name]
+  );
+
+  const handlePrintInvoice = useCallback((invoice) => {
+    try {
+      printInvoiceDocument({
+        invoice,
+        studentName: user?.name,
+        studentEmail: user?.email,
+        consultancyName: invoice?.createdBy?.name || "Consultancy CRM",
+      });
+    } catch (printError) {
+      toast.error(printError.message || "Unable to open the print dialog");
+    }
+  }, [user?.email, user?.name]);
 
   return (
     <div className="space-y-6">
@@ -56,6 +88,24 @@ const MyInvoices = () => {
                     {item.label} • {Number(item.amount).toFixed(2)}
                   </div>
                 ))}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadInvoice(invoice)}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <HiOutlineArrowDownTray className="h-4 w-4" />
+                  Download PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintInvoice(invoice)}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <HiOutlinePrinter className="h-4 w-4" />
+                  Print
+                </button>
               </div>
               {invoice.payments?.length ? (
                 <div className="mt-5 rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">

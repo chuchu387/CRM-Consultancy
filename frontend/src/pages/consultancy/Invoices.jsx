@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { HiOutlineReceiptPercent } from "react-icons/hi2";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  HiOutlineArrowDownTray,
+  HiOutlinePrinter,
+  HiOutlineReceiptPercent,
+} from "react-icons/hi2";
 import { toast } from "react-toastify";
 
 import api from "../../api/axios";
@@ -7,9 +11,11 @@ import Modal from "../../components/Modal";
 import Pagination from "../../components/Pagination";
 import StatusBadge from "../../components/StatusBadge";
 import StudentSummaryCard from "../../components/StudentSummaryCard";
+import { useAuth } from "../../context/AuthContext";
 import useApi from "../../hooks/useApi";
 import usePagination from "../../hooks/usePagination";
 import { formatDateTime } from "../../utils/date";
+import { downloadInvoicePdf, printInvoiceDocument } from "../../utils/invoiceDocument";
 
 const initialInvoiceForm = {
   studentId: "",
@@ -26,6 +32,7 @@ const initialPaymentForm = {
 };
 
 const Invoices = () => {
+  const { user } = useAuth();
   const { data: invoices, loading, error, refetch } = useApi("/invoices");
   const { data: students } = useApi("/users/students");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -115,6 +122,34 @@ const Invoices = () => {
   useEffect(() => {
     resetPage();
   }, [resetPage, statusFilter]);
+
+  const handleDownloadInvoice = useCallback(
+    (invoice, group) => {
+      downloadInvoicePdf({
+        invoice,
+        studentName: group?.studentName,
+        studentEmail: group?.studentEmail,
+        consultancyName: invoice?.createdBy?.name || user?.name || "Consultancy CRM",
+      });
+    },
+    [user?.name]
+  );
+
+  const handlePrintInvoice = useCallback(
+    (invoice, group) => {
+      try {
+        printInvoiceDocument({
+          invoice,
+          studentName: group?.studentName,
+          studentEmail: group?.studentEmail,
+          consultancyName: invoice?.createdBy?.name || user?.name || "Consultancy CRM",
+        });
+      } catch (printError) {
+        toast.error(printError.message || "Unable to open the print dialog");
+      }
+    },
+    [user?.name]
+  );
 
   const resetInvoiceForm = () => {
     setInvoiceForm(initialInvoiceForm);
@@ -399,18 +434,36 @@ const Invoices = () => {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedStudentId("");
-                        setSelectedInvoice(invoice);
-                        setValidationErrors({});
-                        setPaymentModalOpen(true);
-                      }}
-                      className="rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                    >
-                      Add Payment
-                    </button>
+                    <div className="flex flex-col gap-2 sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadInvoice(invoice, selectedStudentGroup)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        <HiOutlineArrowDownTray className="h-4 w-4" />
+                        Download PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePrintInvoice(invoice, selectedStudentGroup)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        <HiOutlinePrinter className="h-4 w-4" />
+                        Print
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStudentId("");
+                          setSelectedInvoice(invoice);
+                          setValidationErrors({});
+                          setPaymentModalOpen(true);
+                        }}
+                        className="rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                      >
+                        Add Payment
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
