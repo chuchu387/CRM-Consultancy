@@ -58,6 +58,10 @@ const statusThemeMap = {
     badge: "bg-emerald-100 text-emerald-700 ring-emerald-200",
     dot: "bg-emerald-500",
   },
+  sent: {
+    badge: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+    dot: "bg-emerald-500",
+  },
   accepted: {
     badge: "bg-emerald-100 text-emerald-700 ring-emerald-200",
     dot: "bg-emerald-500",
@@ -90,9 +94,17 @@ const statusThemeMap = {
     badge: "bg-rose-100 text-rose-700 ring-rose-200",
     dot: "bg-rose-500",
   },
+  failed: {
+    badge: "bg-rose-100 text-rose-700 ring-rose-200",
+    dot: "bg-rose-500",
+  },
   in_progress: {
     badge: "bg-blue-100 text-blue-700 ring-blue-200",
     dot: "bg-blue-500",
+  },
+  prepared: {
+    badge: "bg-slate-100 text-slate-700 ring-slate-200",
+    dot: "bg-slate-500",
   },
   cancelled: {
     badge: "bg-zinc-100 text-zinc-700 ring-zinc-200",

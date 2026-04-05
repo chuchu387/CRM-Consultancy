@@ -1,16 +1,13 @@
 const ReminderLog = require("../models/ReminderLog");
 const { logAuditEvent } = require("../utils/audit");
+const { sendEmailWithResend } = require("../utils/email");
 
 const normalizeString = (value) => (typeof value === "string" ? value.trim() : "");
 const encode = (value) => encodeURIComponent(String(value || ""));
 
 const normalizePhoneForWhatsApp = (value) => String(value || "").replace(/[^\d]/g, "");
 
-const buildDispatchUrl = ({ channel, recipientEmail, recipientPhone, subject, message }) => {
-  if (channel === "email") {
-    return `mailto:${encode(recipientEmail)}?subject=${encode(subject)}&body=${encode(message)}`;
-  }
-
+const buildDispatchUrl = ({ recipientPhone, message }) => {
   const normalizedPhone = normalizePhoneForWhatsApp(recipientPhone);
   return `https://wa.me/${normalizedPhone}?text=${encode(message)}`;
 };
@@ -71,8 +68,13 @@ const dispatchReminders = async (req, res, next) => {
       });
     }
 
-    const createdLogs = await ReminderLog.insertMany(
-      normalizedReminders.map((reminder) => ({
+    const dispatches = [];
+    let sentCount = 0;
+    let failedCount = 0;
+    let preparedCount = 0;
+
+    for (const reminder of normalizedReminders) {
+      const baseLog = {
         channel,
         reminderType: reminder.reminderType || "bulk",
         entityType: reminder.entityType,
@@ -86,66 +88,166 @@ const dispatchReminders = async (req, res, next) => {
         subject: reminder.subject,
         message: reminder.message,
         createdBy: req.user.id,
-      }))
-    );
+      };
 
-    await Promise.all(
-      createdLogs.map((reminderLog, index) =>
-        logAuditEvent({
-          actor: req.user,
-          actionType: "reminder_sent",
-          entityType: normalizedReminders[index].entityType || "reminder",
-          entityId: normalizedReminders[index].entityId || reminderLog._id,
-          entityLabel: normalizedReminders[index].entityLabel,
-          summary: `${channel === "email" ? "Email" : "WhatsApp"} reminder sent to ${
-            normalizedReminders[index].recipientName
-          }`,
-          targetStudentId: normalizedReminders[index].studentId,
-          targetLeadId: normalizedReminders[index].leadId,
-          metadata: {
+      if (channel === "email") {
+        try {
+          const resendResponse = await sendEmailWithResend({
+            to: reminder.recipientEmail,
+            subject: reminder.subject,
+            message: reminder.message,
+          });
+
+          const reminderLog = await ReminderLog.create({
+            ...baseLog,
+            deliveryStatus: "sent",
+            provider: "resend",
+            providerMessageId: resendResponse?.id || "",
+            deliveredAt: new Date(),
+          });
+
+          sentCount += 1;
+
+          dispatches.push({
+            id: reminderLog._id,
+            recipientName: reminder.recipientName,
             channel,
-            reminderType: normalizedReminders[index].reminderType,
-            recipientEmail: normalizedReminders[index].recipientEmail,
-            recipientPhone: normalizedReminders[index].recipientPhone,
-            subject: normalizedReminders[index].subject,
-          },
-        })
-      )
-    );
+            status: "sent",
+            provider: "resend",
+            providerMessageId: resendResponse?.id || "",
+            url: "",
+          });
 
-    const dispatches = normalizedReminders.map((reminder, index) => ({
-      id: createdLogs[index]._id,
-      recipientName: reminder.recipientName,
-      channel,
-      url: buildDispatchUrl({
+          await logAuditEvent({
+            actor: req.user,
+            actionType: "reminder_sent",
+            entityType: reminder.entityType || "reminder",
+            entityId: reminder.entityId || reminderLog._id,
+            entityLabel: reminder.entityLabel,
+            summary: `Email reminder sent to ${reminder.recipientName}`,
+            targetStudentId: reminder.studentId,
+            targetLeadId: reminder.leadId,
+            metadata: {
+              channel,
+              reminderType: reminder.reminderType,
+              recipientEmail: reminder.recipientEmail,
+              subject: reminder.subject,
+              provider: "resend",
+              providerMessageId: resendResponse?.id || "",
+            },
+          });
+        } catch (emailError) {
+          const reminderLog = await ReminderLog.create({
+            ...baseLog,
+            deliveryStatus: "failed",
+            provider: "resend",
+            errorMessage: emailError.message,
+          });
+
+          failedCount += 1;
+
+          dispatches.push({
+            id: reminderLog._id,
+            recipientName: reminder.recipientName,
+            channel,
+            status: "failed",
+            provider: "resend",
+            errorMessage: emailError.message,
+            url: "",
+          });
+
+          await logAuditEvent({
+            actor: req.user,
+            actionType: "reminder_failed",
+            entityType: reminder.entityType || "reminder",
+            entityId: reminder.entityId || reminderLog._id,
+            entityLabel: reminder.entityLabel,
+            summary: `Email reminder failed for ${reminder.recipientName}`,
+            targetStudentId: reminder.studentId,
+            targetLeadId: reminder.leadId,
+            metadata: {
+              channel,
+              reminderType: reminder.reminderType,
+              recipientEmail: reminder.recipientEmail,
+              subject: reminder.subject,
+              provider: "resend",
+              errorMessage: emailError.message,
+            },
+          });
+        }
+
+        continue;
+      }
+
+      const reminderLog = await ReminderLog.create({
+        ...baseLog,
+        deliveryStatus: "prepared",
+      });
+
+      preparedCount += 1;
+
+      dispatches.push({
+        id: reminderLog._id,
+        recipientName: reminder.recipientName,
         channel,
-        recipientEmail: reminder.recipientEmail,
-        recipientPhone: reminder.recipientPhone,
-        subject: reminder.subject,
-        message: reminder.message,
-      }),
-    }));
+        status: "prepared",
+        url: buildDispatchUrl({
+          recipientPhone: reminder.recipientPhone,
+          message: reminder.message,
+        }),
+      });
 
-    const canUseCombinedEmail =
-      channel === "email" &&
-      dispatches.length > 1 &&
-      new Set(normalizedReminders.map((reminder) => `${reminder.subject}||${reminder.message}`)).size === 1;
+      await logAuditEvent({
+        actor: req.user,
+        actionType: "reminder_prepared",
+        entityType: reminder.entityType || "reminder",
+        entityId: reminder.entityId || reminderLog._id,
+        entityLabel: reminder.entityLabel,
+        summary: `WhatsApp reminder prepared for ${reminder.recipientName}`,
+        targetStudentId: reminder.studentId,
+        targetLeadId: reminder.leadId,
+        metadata: {
+          channel,
+          reminderType: reminder.reminderType,
+          recipientPhone: reminder.recipientPhone,
+          subject: reminder.subject,
+        },
+      });
+    }
 
-    const combinedDispatchUrl = canUseCombinedEmail
-      ? `mailto:?bcc=${encode(
-          normalizedReminders.map((reminder) => reminder.recipientEmail).join(",")
-        )}&subject=${encode(normalizedReminders[0].subject)}&body=${encode(
-          normalizedReminders[0].message
-        )}`
-      : "";
+    if (channel === "email" && !sentCount) {
+      return res.status(502).json({
+        success: false,
+        data: {
+          dispatches,
+          combinedDispatchUrl: "",
+          sentCount,
+          failedCount,
+          preparedCount,
+        },
+        message:
+          dispatches.find((dispatch) => dispatch.errorMessage)?.errorMessage ||
+          "Unable to send email reminders",
+      });
+    }
+
+    const summaryMessage =
+      channel === "email"
+        ? failedCount
+          ? `${sentCount} email reminder${sentCount === 1 ? "" : "s"} sent, ${failedCount} failed`
+          : `${sentCount} email reminder${sentCount === 1 ? "" : "s"} sent successfully`
+        : `${preparedCount} WhatsApp reminder${preparedCount === 1 ? "" : "s"} prepared`;
 
     return res.status(201).json({
       success: true,
       data: {
         dispatches,
-        combinedDispatchUrl,
+        combinedDispatchUrl: "",
+        sentCount,
+        failedCount,
+        preparedCount,
       },
-      message: `Prepared ${dispatches.length} reminder${dispatches.length === 1 ? "" : "s"}`,
+      message: summaryMessage,
     });
   } catch (error) {
     return next(error);

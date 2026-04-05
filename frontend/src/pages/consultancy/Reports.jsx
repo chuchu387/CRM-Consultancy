@@ -271,11 +271,16 @@ const Reports = () => {
 
       launchReminderDispatch({
         channel,
-        dispatches: response.dispatches,
-        combinedDispatchUrl: response.combinedDispatchUrl,
+        dispatches: response.data?.dispatches,
+        combinedDispatchUrl: response.data?.combinedDispatchUrl,
       });
 
-      toast.success(`${records.length} reminder${records.length === 1 ? "" : "s"} prepared`);
+      toast.success(
+        response.message ||
+          `${records.length} reminder${records.length === 1 ? "" : "s"} ${
+            channel === "email" ? "sent" : "prepared"
+          }`
+      );
     } catch (dispatchError) {
       toast.error(dispatchError.response?.data?.message || dispatchError.message || "Unable to prepare reminders");
     } finally {
@@ -437,7 +442,7 @@ const Reports = () => {
             }
             className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
           >
-            {reminderLoading === "lead-email" ? "Preparing..." : "Email Selected"}
+            {reminderLoading === "lead-email" ? "Sending..." : "Email Selected"}
           </button>
         }
         renderPrimary={(lead) => (
@@ -516,7 +521,7 @@ const Reports = () => {
             }
             className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
           >
-            {reminderLoading === "document-email" ? "Preparing..." : "Email Selected"}
+            {reminderLoading === "document-email" ? "Sending..." : "Email Selected"}
           </button>
         }
         renderPrimary={(document) => (
@@ -595,7 +600,7 @@ const Reports = () => {
             }
             className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
           >
-            {reminderLoading === "meeting-email" ? "Preparing..." : "Email Selected"}
+            {reminderLoading === "meeting-email" ? "Sending..." : "Email Selected"}
           </button>
         }
         renderPrimary={(meeting) => (
@@ -700,7 +705,7 @@ const Reports = () => {
                 Recent reminder activity
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                Last reminder dispatches prepared by the consultancy team.
+                Last reminder dispatches processed by the consultancy team.
               </p>
             </div>
           </div>
@@ -714,9 +719,16 @@ const Reports = () => {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="font-semibold text-gray-900">{reminder.recipientName}</p>
-                    <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-gray-600 ring-1 ring-inset ring-gray-200">
-                      {reminder.channel}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-gray-600 ring-1 ring-inset ring-gray-200">
+                        {reminder.channel}
+                      </span>
+                      <StatusBadge
+                        status={reminder.deliveryStatus || "prepared"}
+                        label={reminder.deliveryStatus || "prepared"}
+                        compact
+                      />
+                    </div>
                   </div>
                   <p className="mt-2 text-sm text-gray-600">{reminder.entityLabel || reminder.message}</p>
                   <p className="mt-2 text-xs uppercase tracking-[0.16em] text-gray-400">

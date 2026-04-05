@@ -377,11 +377,11 @@ const Leads = () => {
 
       launchReminderDispatch({
         channel: "email",
-        dispatches: response.dispatches,
-        combinedDispatchUrl: response.combinedDispatchUrl,
+        dispatches: response.data?.dispatches,
+        combinedDispatchUrl: response.data?.combinedDispatchUrl,
       });
 
-      toast.success("Bulk follow-up reminder prepared");
+      toast.success(response.message || "Bulk follow-up reminder sent");
     } catch (reminderError) {
       toast.error(reminderError.response?.data?.message || reminderError.message || "Unable to prepare reminders");
     } finally {
@@ -705,7 +705,7 @@ const Leads = () => {
                   onClick={handleBulkReminder}
                   className="rounded-2xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:border-blue-100 disabled:text-blue-300"
                 >
-                  {submitting === "bulk-reminder" ? "Preparing..." : "Email Reminder"}
+                  {submitting === "bulk-reminder" ? "Sending..." : "Email Reminder"}
                 </button>
                 <button
                   type="button"

@@ -62,6 +62,30 @@ const reminderLogSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  deliveryStatus: {
+    type: String,
+    enum: ["prepared", "sent", "failed"],
+    default: "prepared",
+  },
+  provider: {
+    type: String,
+    default: "",
+    trim: true,
+  },
+  providerMessageId: {
+    type: String,
+    default: "",
+    trim: true,
+  },
+  errorMessage: {
+    type: String,
+    default: "",
+    trim: true,
+  },
+  deliveredAt: {
+    type: Date,
+    default: null,
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

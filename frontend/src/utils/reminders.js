@@ -6,10 +6,20 @@ export const dispatchReminderBatch = async ({ channel, reminders }) => {
     reminders,
   });
 
-  return response.data?.data || { dispatches: [], combinedDispatchUrl: "" };
+  return (
+    response.data || {
+      success: false,
+      data: { dispatches: [], combinedDispatchUrl: "", sentCount: 0, failedCount: 0, preparedCount: 0 },
+      message: "",
+    }
+  );
 };
 
 export const launchReminderDispatch = ({ channel, dispatches = [], combinedDispatchUrl = "" }) => {
+  if (channel === "email") {
+    return;
+  }
+
   if (combinedDispatchUrl) {
     window.location.href = combinedDispatchUrl;
     return;
