@@ -333,7 +333,7 @@ const Applications = () => {
         ) : null}
 
         {loading ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
               <div key={index} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="h-3 w-12 animate-pulse rounded bg-gray-100" />
@@ -351,7 +351,7 @@ const Applications = () => {
             ))}
           </div>
         ) : studentGroups.length ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             {paginatedStudentGroups.map((group) => (
               <StudentSummaryCard
                 key={group.studentId}
