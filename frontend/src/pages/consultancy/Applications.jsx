@@ -360,22 +360,22 @@ const Applications = () => {
                 email={group.studentEmail}
                 meta={
                   group.applications[0]
-                    ? `Latest ${group.applications[0].country} • ${group.applications[0].universityName}`
+                    ? `${group.applications[0].country} • ${group.applications[0].universityName}`
                     : ""
                 }
                 stats={[
-                  { label: "Applications", value: group.totalApplications },
+                  { label: "Apps", value: group.totalApplications },
                   { label: "Active", value: group.activeCount, tone: "blue" },
-                  { label: "Offer Received", value: group.offerReceivedCount, tone: "emerald" },
+                  { label: "Offers", value: group.offerReceivedCount, tone: "emerald" },
                 ]}
                 updatedText={`Updated ${formatDateTime(group.latestUpdatedAt)}`}
                 onAction={() => setSelectedStudentId(group.studentId)}
               >
                 <div className="flex flex-wrap gap-1.5">
-                  {group.applications.slice(0, 3).map((item) => (
+                  {group.applications.slice(0, 2).map((item) => (
                     <span
                       key={item._id}
-                      className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600"
+                      className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600"
                     >
                       {item.country}
                     </span>

@@ -32,64 +32,97 @@ const StudentSummaryCard = ({
   const gridClass =
     gridClassMap[Math.min(normalizedStats.length, 4)] || "sm:grid-cols-2 xl:grid-cols-4";
 
-  return (
-    <div
-      className={`border border-gray-200 bg-white shadow-sm ${
-        compact ? "rounded-2xl p-4" : "rounded-[1.75rem] p-5"
-      }`}
-    >
-      <div className={`flex flex-col ${compact ? "gap-3" : "gap-4 lg:flex-row lg:items-start lg:justify-between"}`}>
-        <div className="min-w-0 flex-1">
-          <div className={`flex items-start ${compact ? "gap-2.5" : "gap-3"}`}>
-            <div
-              className={`bg-blue-50 text-blue-700 ${
-                compact ? "rounded-xl p-2" : "rounded-2xl p-3"
-              }`}
-            >
-              <HiOutlineUserCircle className={compact ? "h-5 w-5" : "h-6 w-6"} />
+  if (compact) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <div className="rounded-lg bg-blue-50 p-1.5 text-blue-700">
+              <HiOutlineUserCircle className="h-4 w-4" />
             </div>
-            <div className="min-w-0">
-              <p
-                className={`font-semibold uppercase tracking-[0.16em] text-blue-600 ${
-                  compact ? "text-[10px]" : "text-xs"
-                }`}
-              >
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-blue-600">
                 {label}
               </p>
-              <h3
-                className={`truncate font-heading font-semibold text-gray-900 ${
-                  compact ? "mt-1 text-base" : "mt-2 text-2xl"
-                }`}
-              >
+              <h3 className="mt-0.5 truncate font-heading text-sm font-semibold text-gray-900">
                 {name || "Student"}
               </h3>
-              <p className={`truncate text-gray-600 ${compact ? "mt-1 text-xs" : "mt-2 text-sm"}`}>
-                {email || "No email"}
-              </p>
-              {meta ? (
-                <p className={`text-gray-500 ${compact ? "mt-1 text-xs" : "mt-1 text-sm"}`}>{meta}</p>
-              ) : null}
+              <p className="mt-0.5 truncate text-[11px] text-gray-600">{email || "No email"}</p>
+            </div>
+          </div>
+
+          {onAction ? (
+            <button
+              type="button"
+              onClick={onAction}
+              className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100"
+            >
+              {actionLabel}
+            </button>
+          ) : null}
+        </div>
+
+        {meta ? <p className="mt-2 truncate text-[11px] text-gray-500">{meta}</p> : null}
+
+        {normalizedStats.length ? (
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
+            {normalizedStats.map((stat) => (
+              <div key={stat.label} className="rounded-lg bg-gray-50 px-2.5 py-2">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+                  {stat.label}
+                </p>
+                <p
+                  className={`mt-1 text-sm font-semibold ${
+                    toneClasses[stat.tone] || toneClasses.default
+                  }`}
+                >
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {children ? <div className="mt-2">{children}</div> : null}
+
+        {updatedText ? (
+          <p className="mt-2 truncate text-[9px] uppercase tracking-[0.14em] text-gray-400">
+            {updatedText}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[1.75rem] border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-blue-50 p-3 text-blue-700">
+              <HiOutlineUserCircle className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">{label}</p>
+              <h3 className="mt-2 truncate font-heading text-2xl font-semibold text-gray-900">
+                {name || "Student"}
+              </h3>
+              <p className="mt-2 truncate text-sm text-gray-600">{email || "No email"}</p>
+              {meta ? <p className="mt-1 text-sm text-gray-500">{meta}</p> : null}
             </div>
           </div>
 
           {normalizedStats.length ? (
-            <div className={`grid ${compact ? "mt-3 gap-2" : "mt-4 gap-3"} ${gridClass}`}>
+            <div className={`mt-4 grid gap-3 ${gridClass}`}>
               {normalizedStats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className={`bg-gray-50 ${compact ? "rounded-xl px-3 py-2.5" : "rounded-2xl px-4 py-3"}`}
-                >
-                  <p
-                    className={`font-semibold uppercase tracking-[0.16em] text-gray-400 ${
-                      compact ? "text-[10px]" : "text-[11px]"
-                    }`}
-                  >
+                <div key={stat.label} className="rounded-2xl bg-gray-50 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
                     {stat.label}
                   </p>
                   <p
                     className={`mt-2 text-xl font-semibold ${
                       toneClasses[stat.tone] || toneClasses.default
-                    } ${compact ? "text-lg" : "text-xl"}`}
+                    }`}
                   >
                     {stat.value}
                   </p>
@@ -98,16 +131,10 @@ const StudentSummaryCard = ({
             </div>
           ) : null}
 
-          {children ? <div className={compact ? "mt-3" : "mt-4"}>{children}</div> : null}
+          {children ? <div className="mt-4">{children}</div> : null}
 
           {updatedText ? (
-            <p
-              className={`uppercase tracking-[0.16em] text-gray-400 ${
-                compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
-              }`}
-            >
-              {updatedText}
-            </p>
+            <p className="mt-3 text-xs uppercase tracking-[0.16em] text-gray-400">{updatedText}</p>
           ) : null}
         </div>
 
@@ -115,9 +142,7 @@ const StudentSummaryCard = ({
           <button
             type="button"
             onClick={onAction}
-            className={`shrink-0 border border-blue-200 bg-blue-50 font-semibold text-blue-700 transition hover:bg-blue-100 ${
-              compact ? "rounded-xl px-3 py-1.5 text-xs" : "rounded-2xl px-3 py-2 text-sm"
-            }`}
+            className="shrink-0 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
           >
             {actionLabel}
           </button>
